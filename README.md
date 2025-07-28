@@ -5,7 +5,12 @@ Scripts for typing less
 ```bash
 git clone https://github.com/assembler-0/scripts.git
 cd scripts
-sudo ./autoinstall autoinstall --link --auto
-sudo autoinstall projclone --link --auto
-# remove --link or --auto as needed
+sudo ./autoinstall autoinstall --auto
+sudo autoinstall projclone --auto
+sudo autoinstall projcreate --auto
+# remove  --auto as needed
+```
+or:
+```bash
+sudo ./install
 ```
