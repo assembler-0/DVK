@@ -1,0 +1,152 @@
+#!/bin/bash
+
+# Clean project backup script
+# Backs up current directory excluding build/temp files
+# Usage: backup-clean [suffix]
+
+set -e
+
+# Function to show usage
+show_usage() {
+    echo "Usage: $0 [suffix]"
+    echo ""
+    echo "Backs up current directory excluding build/temp directories"
+    echo ""
+    echo "Excluded patterns:"
+    echo "  - build/, Build/, cmake-build-*/"
+    echo "  - node_modules/, .git/"
+    echo "  - *.o, *.obj, *.exe files"
+    echo "  - .vscode/, .idea/"
+    echo "  - __pycache__/, .pytest_cache/"
+    echo ""
+    echo "Examples:"
+    echo "  $0                    # Creates clean backup with timestamp"
+    echo "  $0 clean-version      # Creates clean backup with custom suffix"
+    exit 1
+}
+
+# Get current directory info
+CURRENT_DIR=$(pwd)
+DIR_NAME=$(basename "$CURRENT_DIR")
+PARENT_DIR=$(dirname "$CURRENT_DIR")
+
+# Check if we're not in root directory
+if [[ "$CURRENT_DIR" == "/" ]]; then
+    echo "Error: Cannot backup root directory" >&2
+    exit 1
+fi
+
+# Check if parent directory is writable
+if [[ ! -w "$PARENT_DIR" ]]; then
+    echo "Error: Cannot write to parent directory '$PARENT_DIR'" >&2
+    exit 1
+fi
+
+# Determine backup suffix
+if [[ $# -eq 0 ]]; then
+    TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
+    BACKUP_SUFFIX="clean_$TIMESTAMP"
+elif [[ $# -eq 1 ]]; then
+    BACKUP_SUFFIX="$1"
+else
+    echo "Error: Too many arguments" >&2
+    show_usage
+fi
+
+# Create backup directory name
+BACKUP_NAME="${DIR_NAME}_${BACKUP_SUFFIX}"
+BACKUP_PATH="$PARENT_DIR/$BACKUP_NAME"
+
+# Check if backup already exists
+if [[ -e "$BACKUP_PATH" ]]; then
+    echo "Warning: Backup '$BACKUP_NAME' already exists"
+    read -p "Overwrite? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Backup cancelled"
+        exit 0
+    fi
+    echo "Removing existing backup..."
+    rm -rf "$BACKUP_PATH"
+fi
+
+# Define exclusion patterns
+EXCLUDE_PATTERNS=(
+    # Build directories
+    "build" "Build" "cmake-build-*" "out" "bin" "obj"
+
+    # Language-specific
+    "node_modules" "__pycache__" ".pytest_cache" "target" "dist"
+
+    # Version control
+    ".git" ".svn" ".hg"
+
+    # IDE/Editor
+    ".vscode" ".idea" "*.swp" "*.swo" "*~"
+
+    # Compiled files
+    "*.o" "*.obj" "*.exe" "*.dll" "*.so" "*.dylib"
+    "*.class" "*.pyc" "*.pyo"
+
+    # Temporary files
+    ".tmp" "*.tmp" "*.temp" ".DS_Store" "Thumbs.db"
+
+    # Logs
+    "*.log" "logs"
+)
+
+# Build rsync exclude arguments
+RSYNC_EXCLUDES=()
+for pattern in "${EXCLUDE_PATTERNS[@]}"; do
+    RSYNC_EXCLUDES+=("--exclude=$pattern")
+done
+
+echo "Creating clean backup: $BACKUP_NAME"
+echo "Source: $CURRENT_DIR"
+echo "Target: $BACKUP_PATH"
+
+# Check if rsync is available (better for exclusions)
+if command -v rsync >/dev/null 2>&1; then
+    echo "Using rsync for clean copy..."
+    rsync -av "${RSYNC_EXCLUDES[@]}" "$CURRENT_DIR/" "$BACKUP_PATH/"
+else
+    echo "Using cp with manual cleanup..."
+    # Fallback to cp + cleanup
+    cp -r "$CURRENT_DIR" "$BACKUP_PATH"
+
+    # Manual cleanup of common directories
+    echo "Cleaning up excluded files..."
+    for pattern in "build" "Build" "cmake-build-*" "node_modules" ".git" ".vscode" ".idea" "__pycache__"; do
+        find "$BACKUP_PATH" -name "$pattern" -type d -exec rm -rf {} + 2>/dev/null || true
+    done
+
+    # Clean up compiled files
+    find "$BACKUP_PATH" -name "*.o" -o -name "*.obj" -o -name "*.exe" -o -name "*.pyc" -exec rm -f {} + 2>/dev/null || true
+fi
+
+# Verify backup was created
+if [[ -d "$BACKUP_PATH" ]]; then
+    # Get size information
+    if command -v du >/dev/null 2>&1; then
+        SIZE=$(du -sh "$BACKUP_PATH" 2>/dev/null | cut -f1 || echo "unknown")
+        echo "✓ Clean backup created successfully ($SIZE)"
+    else
+        echo "✓ Clean backup created successfully"
+    fi
+
+    # Show what was excluded
+    echo "  Excluded: build dirs, compiled files, IDE configs, etc."
+
+    # Show relative path
+    REL_PATH=$(realpath --relative-to="$CURRENT_DIR" "$BACKUP_PATH" 2>/dev/null || echo "../$BACKUP_NAME")
+    echo "  Location: $REL_PATH"
+
+    # Count files
+    if command -v find >/dev/null 2>&1; then
+        FILE_COUNT=$(find "$BACKUP_PATH" -type f | wc -l)
+        echo "  Files copied: $FILE_COUNT"
+    fi
+else
+    echo "Error: Backup creation failed" >&2
+    exit 1
+fi
