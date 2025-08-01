@@ -112,6 +112,7 @@ def get_build_system():
     systems = [
         ("make", "Makefile (simple, traditional)"),
         ("cmake", "CMake (modern, cross-platform)"),
+        ("autocc", "autocc (minimal, fast and smart5)")
         ("manual", "No build system (manual compilation)")
     ]
 
@@ -272,6 +273,77 @@ install: $(TARGET)
 \tcp $(TARGET) /usr/local/bin/
 '''
 
+def create_autocc(project_name, project_type)
+    if project_type == "c":
+        return f'''[compilers]
+as = 'nasm'
+cc = 'clang'
+cxx = 'clang++'
+[features]
+use_pch = true
+[paths]
+exclude_patterns = []
+include_dirs = []
+[project]
+build_dir = 'build'
+default_target = 'main'
+[[targets]]
+cflags = '-std=c11'
+cxxflags = '-std=c++20'
+exclude_patterns = []
+external_libs = []
+main_file = './src/main.c'
+name = 'main'
+output_name = 'main'
+sources = [ './src/main.c' ]
+'''
+    elif project_type == "cpp":
+        return f'''[compilers]
+as = 'nasm'
+cc = 'clang'
+cxx = 'clang++'
+[features]
+use_pch = true
+[paths]
+exclude_patterns = []
+include_dirs = []
+[project]
+build_dir = 'build'
+default_target = 'main'
+[[targets]]
+cflags = '-std=c11'
+cxxflags = '-std=c++20'
+exclude_patterns = []
+external_libs = []
+main_file = './src/main.cpp'
+name = 'main'
+output_name = 'main'
+sources = [ './src/main.cpp' ]
+'''
+    elif project_type == "asm":
+        return f'''[compilers]
+as = 'as'
+cc = 'clang'
+cxx = 'clang++'
+[features]
+use_pch = true
+[paths]
+exclude_patterns = []
+include_dirs = []
+[project]
+build_dir = 'build'
+default_target = 'main'
+[[targets]]
+cflags = '-std=c11'
+cxxflags = '-std=c++20'
+exclude_patterns = []
+external_libs = []
+main_file = './src/main.s'
+name = 'main'
+output_name = 'main'
+sources = [ './src/main.s' ]
+'''
+
 def create_cmake(project_name, project_type):
     if project_type == "c":
         return f'''cmake_minimum_required(VERSION 3.10)
@@ -344,6 +416,10 @@ def create_project_structure(workspace, name, project_type, build_system):
         cmake_file = project_path / "CMakeLists.txt"
         cmake_file.write_text(create_cmake(name, project_type))
         print_success("Created CMakeLists.txt")
+    elif build_system == "autocc":
+        autocc_file = project_path / "autocc.toml"
+        autocc_file.write_text(create_autocc(name, project_type))
+        print_success("Created autocc.toml")
 
     # Create .gitignore
     gitignore = project_path / ".gitignore"
