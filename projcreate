@@ -273,7 +273,7 @@ install: $(TARGET)
 \tcp $(TARGET) /usr/local/bin/
 '''
 
-def create_autocc(project_name, project_type)
+def create_autocc(project_name, project_type):
     if project_type == "c":
         return f'''[compilers]
 as = 'nasm'
