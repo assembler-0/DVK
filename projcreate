@@ -112,7 +112,7 @@ def get_build_system():
     systems = [
         ("make", "Makefile (simple, traditional)"),
         ("cmake", "CMake (modern, cross-platform)"),
-        ("autocc", "autocc (minimal, fast and smart5)")
+        ("autocc", "autocc (minimal, fast and smart)"),
         ("manual", "No build system (manual compilation)")
     ]
 
